@@ -2,9 +2,22 @@ import { useState, useEffect, useRef } from "react";
 import axios from "axios";
 import * as bootstrap from "bootstrap";
 import "./index.css";
-
-const API_BASE = "https://ec-course-api.hexschool.io/v2";
-const API_PATH = "jamesweek2api";
+//從環境變數取得 API 資訊
+const API_BASE = import.meta.env.VITE_API_BASE;
+const API_PATH = import.meta.env.VITE_API_PATH;
+//定義全空白的產品資料常數，方便重用
+const defaultProductState = {
+  title: "",
+  category: "",
+  origin_price: 0,
+  price: 0,
+  unit: "",
+  description: "",
+  content: "",
+  is_enabled: 0,
+  imageUrl: "",
+  imagesUrl: [], // 副圖陣列
+};
 
 function App() {
   const [formData, setFormData] = useState({
@@ -14,19 +27,10 @@ function App() {
   const [isAuth, setIsAuth] = useState(false);
   const [products, setProducts] = useState([]);
 
-  // 暫存產品資料（用於新增與編輯）
-  const [tempProduct, setTempProduct] = useState({
-    title: "",
-    category: "",
-    origin_price: 0,
-    price: 0,
-    unit: "",
-    description: "",
-    content: "",
-    is_enabled: 0,
-    imageUrl: "",
-    imagesUrl: [],
-  });
+  // 狀態管理：目前操作的產品資料與 Modal 類型
+  const [tempProduct, setTempProduct] = useState(defaultProductState);
+  const [modalType, setModalType] = useState("");
+
   const productModalRef = useRef(null); // 指向 Modal DOM
   const modalInstanceRef = useRef(null); // 存放 Bootstrap Modal 實例
 
@@ -73,10 +77,7 @@ function App() {
   // 處理登入輸入
   const handleInputChange = (e) => {
     const { id, value } = e.target;
-    setFormData((prevData) => ({
-      ...prevData,
-      [id]: value,
-    }));
+    setFormData((prevData) => ({ ...prevData, [id]: value }));
   };
 
   //執行登入
@@ -90,28 +91,18 @@ function App() {
       setIsAuth(true);
       getProducts();
     } catch (error) {
-      alert("登入失敗: " + (error.response?.data?.message || "原因未知"));
+      alert("登入失敗");
     }
   };
-
+  //Modal 操作邏輯
   //開啟 Modal(判斷是新增or編輯)
-  const openModal = (product) => {
-    if (product) {
-      setTempProduct(product); //編輯:帶入舊資料
-    } else {
-      setTempProduct({
-        title: "",
-        category: "",
-        origin_price: 0,
-        price: 0,
-        unit: "",
-        description: "",
-        content: "",
-        is_enabled: 0,
-        imageUrl: "",
-        imagesUrl: [],
-      });
-    }
+  const openModal = (type, product = defaultProductState) => {
+    setModalType(type);
+    // 確保編輯時若沒有 imagesUrl，也會給予空陣列避免報錯
+    setTempProduct({
+      ...product,
+      imagesUrl: product.imagesUrl ? [...product.imagesUrl] : [],
+    });
     modalInstanceRef.current.show();
   };
 
@@ -122,6 +113,26 @@ function App() {
       ...prev,
       [id]: type === "checkbox" ? (checked ? 1 : 0) : value,
     }));
+  };
+
+  //副圖管理邏輯
+  const handleImageChange = (index, value) => {
+    const newImages = [...tempProduct.imagesUrl];
+    newImages[index] = value;
+    setTempProduct({ ...tempProduct, imagesUrl: newImages });
+  };
+
+  const addImage = () => {
+    setTempProduct({
+      ...tempProduct,
+      imagesUrl: [...tempProduct.imagesUrl, ""],
+    });
+  };
+
+  const removeImage = () => {
+    const newImages = [...tempProduct.imagesUrl];
+    newImages.pop();
+    setTempProduct({ ...tempProduct, imagesUrl: newImages });
   };
 
   //儲存產品(新增或編輯)
@@ -209,14 +220,14 @@ function App() {
                         <button
                           type="button"
                           className="btn btn-outline-primary btn-sm"
-                          onClick={() => openModal(item)}
+                          onClick={() => openModal("edit", item)}
                         >
                           編輯
                         </button>
                         <button
                           type="button"
                           className="btn btn-outline-danger btn-sm"
-                          onClick={() => deleteProduct(item.id)}
+                          onClick={() => openModal("delete", item)}
                         >
                           刪除
                         </button>
@@ -300,7 +311,7 @@ function App() {
                     </label>
                     <input
                       id="imageUrl"
-                      type="text"
+                      type="url"
                       className="form-control"
                       placeholder="請輸入圖片連結"
                       value={tempProduct.imageUrl}
@@ -318,6 +329,43 @@ function App() {
                       無圖片
                     </div>
                   )}
+                  {/* 副圖區 */}
+                  <h6>副圖設定</h6>
+                  {tempProduct.imagesUrl.map((img, index) => (
+                    <div key={index} className="mb-2">
+                      <input
+                        type="url"
+                        className="form-control mb-1"
+                        placeholder={`副圖 ${index + 1}`}
+                        value={img}
+                        onChange={(e) =>
+                          handleImageChange(index, e.target.value)
+                        }
+                      />
+                      {img && (
+                        <img src={img} className="img-fluid mb-2" alt="" />
+                      )}
+                    </div>
+                  ))}
+
+                  <div className="d-flex justify-content-between">
+                    {tempProduct.imagesUrl.length < 5 && (
+                      <button
+                        className="btn btn-outline-primary btn-sm w-100 me-2"
+                        onClick={addImage}
+                      >
+                        新增副圖
+                      </button>
+                    )}
+                    {tempProduct.imagesUrl.length > 0 && (
+                      <button
+                        className="btn btn-outline-danger btn-sm w-100"
+                        onClick={removeImage}
+                      >
+                        刪除最後一張
+                      </button>
+                    )}
+                  </div>
                 </div>
                 <div className="col-sm-8">
                   <div className="mb-3">
@@ -438,19 +486,20 @@ function App() {
             </div>
             <div className="modal-footer">
               <button
-                type="button"
                 className="btn btn-outline-secondary"
                 onClick={() => modalInstanceRef.current.hide()}
               >
                 取消
               </button>
-              <button
-                type="button"
-                className="btn btn-primary"
-                onClick={updateProduct}
-              >
-                確認
-              </button>
+              {modalType === "delete" ? (
+                <button className="btn btn-danger" onClick={deleteProduct}>
+                  確認刪除
+                </button>
+              ) : (
+                <button className="btn btn-primary" onClick={updateProduct}>
+                  確認儲存
+                </button>
+              )}
             </div>
           </div>
         </div>
