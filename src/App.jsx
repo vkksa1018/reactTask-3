@@ -380,6 +380,7 @@ function App() {
                     )}
                     {tempProduct.imagesUrl.length > 0 && (
                       <button
+                        type="button"
                         className="btn btn-outline-danger btn-sm w-100"
                         onClick={removeImage}
                       >
