@@ -166,16 +166,28 @@ function App() {
   };
 
   //刪除產品
-  const deleteProduct = async (id) => {
+  // 刪除產品
+  const deleteProduct = async () => {
+    // 移除參數 id
+    const { id } = tempProduct; // 直接從 state 取得目前的 ID
+
+    if (!id) {
+      alert("找不到產品 ID");
+      return;
+    }
+
     if (window.confirm("確定要刪除此產品嗎?")) {
       try {
         const res = await axios.delete(
           `${API_BASE}/api/${API_PATH}/admin/product/${id}`,
         );
         alert(res.data.message);
+
+        // 成功後關閉 Modal 並重新取得列表
+        modalInstanceRef.current.hide();
         getProducts();
       } catch (error) {
-        alert("刪除失敗");
+        alert(error.response?.data?.message || "刪除失敗");
       }
     }
   };
@@ -186,7 +198,11 @@ function App() {
         <div>
           <div className="container">
             <div className="text-end mt-4">
-              <button className="btn btn-primary" onClick={() => openModal()}>
+              <button
+                type="button"
+                className="btn btn-primary"
+                onClick={() => openModal()}
+              >
                 建立新的產品
               </button>
             </div>
@@ -343,7 +359,11 @@ function App() {
                         }
                       />
                       {img && (
-                        <img src={img} className="img-fluid mb-2" alt="" />
+                        <img
+                          src={img}
+                          className="img-fluid mb-2"
+                          alt={`副圖 ${index + 1}`}
+                        />
                       )}
                     </div>
                   ))}
@@ -351,6 +371,7 @@ function App() {
                   <div className="d-flex justify-content-between">
                     {tempProduct.imagesUrl.length < 5 && (
                       <button
+                        type="button"
                         className="btn btn-outline-primary btn-sm w-100 me-2"
                         onClick={addImage}
                       >
@@ -486,17 +507,26 @@ function App() {
             </div>
             <div className="modal-footer">
               <button
+                type="button"
                 className="btn btn-outline-secondary"
                 onClick={() => modalInstanceRef.current.hide()}
               >
                 取消
               </button>
               {modalType === "delete" ? (
-                <button className="btn btn-danger" onClick={deleteProduct}>
+                <button
+                  type="button"
+                  className="btn btn-danger"
+                  onClick={deleteProduct} // 改成這樣，不需要傳入 item.id
+                >
                   確認刪除
                 </button>
               ) : (
-                <button className="btn btn-primary" onClick={updateProduct}>
+                <button
+                  type="button"
+                  className="btn btn-primary"
+                  onClick={updateProduct}
+                >
                   確認儲存
                 </button>
               )}
